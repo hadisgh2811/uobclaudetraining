@@ -99,6 +99,12 @@
   --c-ok-bg:    #f0fdf4;
   --c-ok-ln:    #bbf7d0;
 
+  /* WhatsApp service desk widget. WhatsApp's own darker brand greens, chosen
+     over the familiar #25d366 because white on that is only 1.9:1 — the glyph
+     would fail the 3:1 minimum for graphical objects. */
+  --c-wa:       #128c7e;   /*  4.1:1 with white — glyph + button          */
+  --c-wa-dark:  #075e54;   /*  7.6:1 with white — hover + panel header    */
+
   /* Spacing scale — dense/dashboard tier */
   --s-1: 4px;
   --s-2: 8px;
@@ -756,13 +762,62 @@ button { cursor: pointer; }
   border-top: 1px solid var(--c-line);
 }
 
+/* --- Celebration dialog — shown when a card lands in Done ---------------- */
+/* Same backdrop as the add-task modal, centred rather than top-aligned
+   because the message is short. Declared later in the sheet, so the override
+   needs no extra weight. */
+.celebrate-backdrop { place-items: center; }
+
+.celebrate {
+  width: min(400px, 100%);
+  padding: var(--s-5) var(--s-4) var(--s-4);
+  background: var(--c-surface);
+  border-radius: var(--radius);
+  border-top: 4px solid var(--c-ok);
+  box-shadow: var(--shadow-2);
+  text-align: center;
+  animation: celebrate-in var(--speed) ease-out;
+}
+
+@keyframes celebrate-in {
+  from { opacity: 0; transform: translateY(8px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+.celebrate-mark {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin: 0 auto var(--s-3);
+  border: 1px solid var(--c-ok-ln);
+  border-radius: 50%;
+  background: var(--c-ok-bg);
+  color: var(--c-ok);
+}
+
+.celebrate h2 { font-size: 17px; }
+
+.celebrate-body {
+  margin: var(--s-2) 0 var(--s-4);
+  font-size: 13px;
+  color: var(--c-ink-soft);
+}
+.celebrate-task {
+  display: block;
+  margin-top: var(--s-1);
+  font-weight: 600;
+  color: var(--c-ink);
+}
+
 /* ============================================================
    8. TOASTS
    ============================================================ */
 .toast-region {
   position: fixed;
   right: var(--s-4);
-  bottom: var(--s-4);
+  /* Clear of the WhatsApp button (56px) that shares this corner. */
+  bottom: calc(var(--s-4) + 56px + var(--s-2));
   display: flex;
   flex-direction: column;
   gap: var(--s-2);
@@ -783,8 +838,92 @@ button { cursor: pointer; }
 .toast-warn    { color: var(--c-warn);   border-color: #ecc99a; background: var(--c-warn-bg); }
 .toast-info    { color: var(--c-navy-800); border-color: #b6d2ee; background: var(--c-blue-050); }
 
+
 /* ============================================================
-   9. FOOTER
+   9. WHATSAPP WIDGET
+   ============================================================ */
+/* Below the modal backdrop (z-index 50) so any dialog covers it, and below
+   the toasts — which are lifted clear of the button in section 8. */
+.wa-widget {
+  position: fixed;
+  right: var(--s-4);
+  bottom: var(--s-4);
+  z-index: 40;
+  display: flex;
+  /* Button first in the DOM so Tab reaches it before the panel it opens;
+     column-reverse then draws the panel above it. */
+  flex-direction: column-reverse;
+  align-items: flex-end;
+  gap: var(--s-2);
+}
+
+.wa-toggle {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: none;
+  border-radius: 50%;
+  background: var(--c-wa);
+  color: #fff;
+  box-shadow: var(--shadow-2);
+  cursor: pointer;
+  transition: background var(--speed) ease, transform var(--speed) ease;
+}
+.wa-toggle:hover { background: var(--c-wa-dark); transform: translateY(-1px); }
+.wa-toggle:focus-visible { outline: 3px solid var(--c-navy-800); outline-offset: 2px; }
+
+.wa-panel {
+  width: min(300px, calc(100vw - 32px));
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+  animation: wa-in var(--speed) ease-out;
+}
+.wa-panel[hidden] { display: none; }
+
+@keyframes wa-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.wa-panel-header {
+  padding: var(--s-3);
+  background: var(--c-wa-dark);
+  color: #fff;
+}
+.wa-panel-header h2 { font-size: 13.5px; }
+.wa-panel-header p  { font-size: 11.5px; }
+
+.wa-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding: var(--s-2);
+}
+
+.wa-query {
+  display: block;
+  padding: var(--s-2);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-s);
+  background: #fff;
+  color: var(--c-ink);
+  font-size: 12.5px;
+  text-decoration: none;
+}
+.wa-query:hover { background: var(--c-ok-bg); border-color: var(--c-ok-ln); }
+.wa-query:focus-visible { outline: 2px solid var(--c-navy-800); outline-offset: 1px; }
+
+.wa-foot {
+  padding: 0 var(--s-3) var(--s-3);
+  font-size: 11px;
+  color: var(--c-ink-soft);
+}
+/* ============================================================
+   10. FOOTER
    ============================================================ */
 .app-footer {
   padding: var(--s-4) var(--s-5) var(--s-6);
@@ -793,7 +932,7 @@ button { cursor: pointer; }
 }
 
 /* ============================================================
-   10. RESPONSIVE — stack columns below 768px
+   11. RESPONSIVE — stack columns below 768px
    ============================================================ */
 /* 1440 / 1024 / 768 / 375 — the four widths in the pre-delivery checklist */
 @media (max-width: 1180px) {
@@ -972,6 +1111,49 @@ button { cursor: pointer; }
   </div>
 </div>
 
+<!-- ============================================================
+     CELEBRATION DIALOG — a task has reached Done
+     ============================================================ -->
+<div class="modal-backdrop celebrate-backdrop" id="celebrateBackdrop" hidden>
+  <div class="celebrate" role="alertdialog" aria-modal="true"
+       aria-labelledby="celebrateTitle" aria-describedby="celebrateBody">
+    <div class="celebrate-mark" aria-hidden="true">
+      <svg width="22" height="22" viewBox="0 0 18 18" fill="none" stroke="currentColor"
+           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9.5l4 4 8-9"/>
+      </svg>
+    </div>
+    <h2 id="celebrateTitle">Congratulations!</h2>
+    <p class="celebrate-body" id="celebrateBody">
+      <span id="celebrateLead"></span>
+      <span class="celebrate-task" id="celebrateTask"></span>
+    </p>
+    <button type="button" class="btn btn-primary" id="celebrateClose">Close</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     WHATSAPP SERVICE DESK WIDGET
+     ============================================================ -->
+<div class="wa-widget">
+  <button type="button" class="wa-toggle" id="waToggle"
+          aria-expanded="false" aria-controls="waPanel"
+          aria-label="Chat with the PMO service desk on WhatsApp">
+    <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0 0 20.465 3.488"/>
+    </svg>
+  </button>
+
+  <div class="wa-panel" id="waPanel" role="dialog" aria-labelledby="waPanelTitle" hidden>
+    <div class="wa-panel-header">
+      <h2 id="waPanelTitle">PMO service desk</h2>
+      <p>Pick a question to start the chat</p>
+    </div>
+    <div class="wa-list" id="waList"></div>
+    <p class="wa-foot">Opens WhatsApp in a new tab. Nothing is sent from this page.</p>
+  </div>
+</div>
+
 <!-- Toast region — announced politely to assistive technology -->
 <div class="toast-region" id="toastRegion" role="status" aria-live="polite" aria-atomic="false"></div>
 
@@ -991,6 +1173,28 @@ button { cursor: pointer; }
    The address is sent to this endpoint and nowhere else.
    ============================================================ */
 const FORMSUBMIT_ENDPOINT = "https://formsubmit.co/ajax/YOUR_EMAIL@example.com";
+
+/* ------------------------------------------------------------
+   WHATSAPP SERVICE DESK
+
+   Placeholder number. +65 0000 0000 cannot belong to anyone —
+   Singapore mobile numbers start with 8 or 9 — so the link is
+   inert until the real service desk number replaces it. That is
+   the expected default state, not a bug.
+
+   Digits only, full international format: no "+", spaces or dashes.
+   ------------------------------------------------------------ */
+const WHATSAPP_NUMBER = "6500000000";
+
+/* The openers offered when the widget is tapped. The panel is generated
+   from this list, so adding a question is a one-line change. */
+const WHATSAPP_QUERIES = [
+  "What is the current status of my project?",
+  "I need to escalate a blocked task.",
+  "How do I raise a new IT service request?",
+  "Can I have the latest portfolio status report?",
+  "Who is the assignee for a task on the board?"
+];
 
 /* ============================================================
    CONSTANTS — columns and select option sets
@@ -1044,7 +1248,7 @@ const state = {
   tasks: [],
   filters: { project: "", assignee: "", priority: "" },
   // Transient UI flags that the renderer reads (menus / confirm toggles)
-  ui: { moveMenuFor: null, confirmDeleteFor: null, focusKey: null },
+  ui: { moveMenuFor: null, confirmDeleteFor: null, celebrateFor: null, waOpen: false, focusKey: null },
   nextIdNumber: 1
 };
 
@@ -1308,6 +1512,7 @@ function renderCard(task) {
 
       '<div class="card-actions">' +
         '<button type="button" class="mini-btn" data-action="open-move" data-id="' + id + '" ' +
+          'data-fk="move:' + id + '" ' +
           'aria-expanded="' + (state.ui.moveMenuFor === task.id) + '">Move' +
           '<svg width="9" height="9" viewBox="0 0 16 16" aria-hidden="true" fill="none" ' +
             'stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
@@ -1351,6 +1556,8 @@ function renderBoard() {
   }).join("");
 
   renderSummary();
+  renderCelebration();
+  renderWhatsApp();
   restoreFocus();
 }
 
@@ -1425,6 +1632,81 @@ function restoreFocus() {
   if (el) el.focus();
 }
 
+/**
+ * Show or hide the Done celebration.
+ *
+ * Driven from state.ui like every other transient flag, so a re-render can
+ * never leave the dialog out of step with the board: a celebrated task that
+ * is deleted takes the dialog with it.
+ */
+function renderCelebration() {
+  const backdrop = document.getElementById("celebrateBackdrop");
+  const task = state.ui.celebrateFor ? findTask(state.ui.celebrateFor) : null;
+
+  if (!task) {
+    state.ui.celebrateFor = null;
+    backdrop.hidden = true;
+    return;
+  }
+
+  // textContent, not innerHTML — the title is user input and is never markup.
+  document.getElementById("celebrateLead").textContent =
+    task.id + " is complete and now sits in Done.";
+  document.getElementById("celebrateTask").textContent = task.title;
+
+  // Only take focus on the render that opens the dialog, not on every one.
+  if (backdrop.hidden) {
+    backdrop.hidden = false;
+    document.getElementById("celebrateClose").focus();
+  }
+}
+
+/** Dismiss the celebration, handing focus back to the card that earned it. */
+function dismissCelebration() {
+  if (!state.ui.celebrateFor) return;
+  state.ui.focusKey = "move:" + state.ui.celebrateFor;
+  state.ui.celebrateFor = null;
+  renderBoard();
+}
+
+/**
+ * Show or hide the WhatsApp suggestion panel.
+ *
+ * The openers are real links, so the browser opens WhatsApp itself: no popup
+ * workaround, and the page sends nothing. Built only on the render that opens
+ * the panel, so a later re-render cannot pull focus off the list.
+ */
+function renderWhatsApp() {
+  const panel = document.getElementById("waPanel");
+  document.getElementById("waToggle").setAttribute("aria-expanded", String(state.ui.waOpen));
+
+  if (!state.ui.waOpen) {
+    panel.hidden = true;
+    return;
+  }
+  if (!panel.hidden) return;
+
+  document.getElementById("waList").innerHTML = WHATSAPP_QUERIES.map(function (query) {
+    return '<a class="wa-query" target="_blank" rel="noopener noreferrer" href="' +
+             "https://wa.me/" + encodeURIComponent(WHATSAPP_NUMBER) +
+             "?text=" + encodeURIComponent(query) + '">' +
+             escapeHtml(query) +
+           "</a>";
+  }).join("");
+
+  panel.hidden = false;
+  const first = document.querySelector("#waList .wa-query");
+  if (first) first.focus();
+}
+
+/** Close the suggestion panel, optionally returning focus to its button. */
+function closeWhatsApp(refocus) {
+  if (!state.ui.waOpen) return;
+  state.ui.waOpen = false;
+  renderBoard();
+  if (refocus) document.getElementById("waToggle").focus();
+}
+
 /* ============================================================
    TASK OPERATIONS
    ============================================================ */
@@ -1480,8 +1762,13 @@ function moveTask(taskId, newStatus) {
   task.status = newStatus;
   state.ui.moveMenuFor = null;
   state.ui.confirmDeleteFor = null;
+  // Landing in Done earns the dialog; every other move keeps the quiet toast,
+  // so the celebration never competes with a routine status change.
+  state.ui.celebrateFor = newStatus === "Done" ? task.id : null;
   renderBoard();
-  showToast(task.id + " moved to " + newStatus + ".", "info");
+  if (newStatus !== "Done") {
+    showToast(task.id + " moved to " + newStatus + ".", "info");
+  }
 }
 
 /** Remove a task from state. */
@@ -1872,6 +2159,46 @@ function setupModal() {
   document.getElementById("addTaskForm").addEventListener("submit", handleSubmit);
 }
 
+function setupCelebration() {
+  document.getElementById("celebrateClose").addEventListener("click", dismissCelebration);
+
+  document.getElementById("celebrateBackdrop").addEventListener("mousedown", function (event) {
+    if (event.target.id === "celebrateBackdrop") dismissCelebration();
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && !document.getElementById("celebrateBackdrop").hidden) {
+      dismissCelebration();
+    }
+  });
+}
+
+function setupWhatsApp() {
+  const toggle = document.getElementById("waToggle");
+
+  toggle.addEventListener("click", function () {
+    state.ui.waOpen = !state.ui.waOpen;
+    renderBoard();
+    if (!state.ui.waOpen) toggle.focus();
+  });
+
+  // Picking a suggestion hands over to WhatsApp in a new tab; close behind it.
+  document.getElementById("waPanel").addEventListener("click", function (event) {
+    if (event.target.closest(".wa-query")) closeWhatsApp(false);
+  });
+
+  // A click anywhere else dismisses it, the way a menu should behave. Guarded
+  // on closest() because a click can land on a node that has no ancestors.
+  document.addEventListener("mousedown", function (event) {
+    if (!state.ui.waOpen || !event.target.closest) return;
+    if (!event.target.closest(".wa-widget")) closeWhatsApp(false);
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && state.ui.waOpen) closeWhatsApp(true);
+  });
+}
+
 /* ============================================================
    INIT
    ============================================================ */
@@ -1903,6 +2230,8 @@ function init() {
   setupBoardActions();
   setupFilters();
   setupModal();
+  setupCelebration();
+  setupWhatsApp();
   warnIfFramed();
 }
 
