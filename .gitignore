@@ -12,3 +12,7 @@ Notes-*.txt
 # content itself does not belong in this repo.
 .claude/skills/
 skills-lock.json
+
+# Playwright MCP session artefacts — console logs and page snapshots it
+# writes beside each screenshot. Transient, not part of the project.
+.playwright-mcp/

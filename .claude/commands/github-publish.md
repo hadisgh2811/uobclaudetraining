@@ -199,9 +199,20 @@ and fall back below. It needs Node.js on PATH, and a Claude Code restart after t
 config is first added.
 
 ```
-browser_navigate      → https://OWNER.github.io/REPO/
+browser_navigate        → https://OWNER.github.io/REPO/
 browser_take_screenshot → filename: docs/screenshot.png, fullPage: false
 ```
+
+Two things about that server that are easy to get wrong:
+
+- **`filename` resolves against the working directory, not `--output-dir`.** Pass the
+  repo-relative `docs/screenshot.png`. An absolute path outside the allowed roots is
+  refused outright ("File access denied: … is outside allowed roots"), and a bare
+  `screenshot.png` lands in the repo root rather than in `docs/`.
+- **It writes session artefacts beside each capture** — a `console-*.log` and a
+  `page-*.yml` per call. `.mcp.json` points `--output-dir` at `.playwright-mcp/`, which
+  is gitignored, to keep them out of `docs/`. If you change that, gitignore wherever
+  they land.
 
 Wait for the page to settle before capturing. A viewport shot (`fullPage: false`) reads
 better in a README than a long full-page strip; use `fullPage: true` only if the page

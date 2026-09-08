@@ -11,7 +11,9 @@
         "chrome",
         "--headless",
         "--viewport-size",
-        "1440,900"
+        "1440,900",
+        "--output-dir",
+        ".playwright-mcp"
       ]
     }
   }
