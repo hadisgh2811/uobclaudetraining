@@ -22,8 +22,8 @@ Four fixed columns (Backlog / In Progress / Blocked / Done) with drag-and-drop b
 them, plus a keyboard-accessible `Move ▸` control on every card so the board works without
 a mouse. Cards are colour-coded by priority, flagged when overdue, and deleted through an
 inline Yes/No confirmation rather than a browser dialog. Above the board there is a live
-summary strip and client-side filters for project, assignee and priority. Adding a task
-goes through a validated form that shows inline field errors.
+executive KPI band and client-side filters for project, assignee and priority. Adding a
+task goes through a validated form that shows inline field errors.
 
 The board is seeded with 8 demo tasks and **holds its state in memory only** — no
 `localStorage`, no cookies, no database. Refreshing the page resets it to the seed data.
@@ -44,6 +44,23 @@ confirmation email, and nothing is delivered until you click the link in it.
 Until that is done, adding a task shows an amber *"Card added locally — email notification
 failed"* toast. That is expected — the notification is optional and its failure never
 affects the board.
+
+## Redesign
+
+The board was reworked for a senior-management audience: a flat navy header, a slate/sky
+palette where the single blue accent always means "you can act here", an executive KPI
+band with a delivery-health meter, and columns rendered as white sheets with a status
+rail rather than tinted wells.
+
+The earlier interface is kept here for comparison rather than overwritten — the same
+eight seeded tasks, before the redesign:
+
+<details>
+<summary>Before the redesign</summary>
+
+![The earlier board: a lighter blue gradient header with a compact summary strip, tinted grey columns, and cards showing project, assignee and due date as stacked sentences](docs/screenshot-before-revamp.png)
+
+</details>
 
 ## Security posture
 
@@ -74,5 +91,6 @@ whether it has been framed by another origin and warns if so.
 | `CLAUDE.md` | Architecture and constraints, for working on this with Claude Code |
 | `.github/workflows/deploy-pages.yml` | Publishes the site to GitHub Pages on every push to `main` |
 | `.claude/commands/` | Project slash commands for Claude Code |
-| `.mcp.json` | Registers the Playwright MCP server used to capture the screenshot |
+| `.mcp.json` | Registers the Playwright MCP server for browser automation |
 | `docs/screenshot.png` | The board, captured from the published site |
+| `docs/screenshot-before-revamp.png` | The interface prior to the redesign, kept for comparison |
