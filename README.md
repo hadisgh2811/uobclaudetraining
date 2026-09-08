@@ -5,6 +5,8 @@ Claude Code.
 
 **[▶ Open the live demo](https://hadisgh2811.github.io/uobclaudetraining/)**
 
+[![The board in Demo mode: a summary strip reading Total 8 and Overdue 2, filter controls, and four columns — Backlog, In Progress, Blocked, Done — holding priority-tagged task cards](docs/screenshot.png)](https://hadisgh2811.github.io/uobclaudetraining/)
+
 > Internal demo / training artefact. It is not an official UOB system and uses no real UOB
 > logo, trademark or branding — only a neutral "UOB IT PMO" text wordmark.
 
@@ -52,3 +54,5 @@ affects the board.
 | `CLAUDE.md` | Architecture and constraints, for working on this with Claude Code |
 | `.github/workflows/deploy-pages.yml` | Publishes the site to GitHub Pages on every push to `main` |
 | `.claude/commands/` | Project slash commands for Claude Code |
+| `.mcp.json` | Registers the Playwright MCP server used to capture the screenshot |
+| `docs/screenshot.png` | The board, captured from the published site |
