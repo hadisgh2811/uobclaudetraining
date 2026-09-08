@@ -211,13 +211,21 @@ is short.
 ship on Windows and need no install:
 
 ```powershell
-& "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless --disable-gpu `
+& "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless=new --disable-gpu `
   --screenshot="$PWD\docs\screenshot.png" --window-size=1440,900 `
-  --virtual-time-budget=4000 "https://OWNER.github.io/REPO/"
+  --virtual-time-budget=6000 --hide-scrollbars "https://OWNER.github.io/REPO/"
 ```
+
+It must be `--headless=new`. Chrome removed the old headless mode in v132, and with a
+bare `--headless` the browser exits 0 and writes **no file at all** — a silent no-op
+that looks like success. Always check the file exists afterwards rather than trusting
+the exit code.
 
 `--virtual-time-budget` gives scripts time to render before the capture; without it you
 can get a blank or half-drawn page. Swap in `msedge.exe` if Chrome is absent.
+
+Note PowerShell renders a native command's stdout as a red `NativeCommandError` here —
+that is cosmetic, not a failure. Judge by whether the PNG exists.
 
 Either way, afterwards:
 
