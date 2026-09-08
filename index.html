@@ -6,11 +6,45 @@
 <title>UOB IT PMO — Project Board</title>
 
 <!--
+  ── Content Security Policy ────────────────────────────────────────────────
+  Defence in depth. escapeHtml() is the primary XSS control, but a single
+  control is a single point of failure: if one interpolation is ever missed,
+  this policy is what stops injected script from executing.
+
+  default-src 'none'   deny everything, then allow only what is needed
+  script-src / style-src 'unsafe-inline'
+                       unavoidable — the single-file constraint means the
+                       script and stylesheet ARE inline. No external origin
+                       is permitted, so no remote code can be pulled in.
+  connect-src          the FormSubmit endpoint and nothing else, so a script
+                       injection cannot exfiltrate the board to another host
+  img-src data:        the inline SVG favicon only
+  form-action 'none'   the form is submitted by fetch and must never navigate
+  base-uri 'none'      blocks <base> injection re-pointing relative URLs
+  frame-ancestors      declared for intent, but browsers IGNORE it in a meta
+                       tag — it only takes effect as a real response header.
+                       Clickjacking cover therefore needs server config; the
+                       frame-busting check in the script is the stand-in.
+-->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'none';
+  script-src 'unsafe-inline';
+  style-src 'unsafe-inline';
+  img-src data:;
+  connect-src https://formsubmit.co;
+  form-action 'none';
+  base-uri 'none';
+  frame-ancestors 'none'">
+
+<!-- Never leak the page URL to the third-party notification endpoint -->
+<meta name="referrer" content="no-referrer">
+
+<!--
   Inline SVG favicon as a data URI. Browsers request /favicon.ico automatically,
   which would 404 when the page is served over HTTP; declaring one here answers
   that request without adding an external file.
 -->
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231565c0'/><text x='16' y='23' font-family='Segoe UI,Arial,sans-serif' font-size='16' font-weight='700' fill='white' text-anchor='middle'>P</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230369a1'/><text x='16' y='23' font-family='Segoe UI,Arial,sans-serif' font-size='16' font-weight='700' fill='white' text-anchor='middle'>P</text></svg>">
 
 <!--
   UOB IT PMO — Internal demo / training tool.
@@ -23,36 +57,49 @@
    1. DESIGN TOKENS — palette + spacing scale
    ============================================================ */
 :root {
-  /* Corporate blue palette (neutral, not a real brand) */
-  --c-navy-900: #08213f;
-  --c-navy-800: #0d2f57;
-  --c-navy-700: #14406f;
-  --c-blue-600: #1565c0;
-  --c-blue-500: #1e7ae0;
-  --c-blue-050: #e8f1fb;
+  /* ── Corporate navy + blue CTA ──────────────────────────────────────────
+     Slate/sky ramp: a restrained executive palette, deliberately generic and
+     not any real institution's brand. Navy carries structure (header, rails,
+     counters); the single blue accent is reserved for interactive affordances
+     so "blue" always means "you can act here". */
+  --c-navy-900: #0f172a;   /* primary — header, headings          */
+  --c-navy-800: #1e293b;   /* raised navy surfaces                */
+  --c-navy-700: #334155;   /* secondary                           */
+  --c-navy-600: #475569;
 
-  --c-ink:      #17202a;
-  --c-ink-soft: #4a5866;
-  --c-line:     #d8dee6;
-  --c-line-soft:#e8ecf1;
+  --c-blue-700: #075985;   /* accent pressed                      */
+  --c-blue-600: #0369a1;   /* accent / CTA — the only action blue  */
+  --c-blue-500: #0284c7;   /* accent hover, focus ring            */
+  --c-blue-100: #bae6fd;
+  --c-blue-050: #e0f2fe;
+
+  --c-ink:      #020617;   /* 16.9:1 on canvas                    */
+  --c-ink-soft: #475569;   /*  7.5:1 on canvas — AA for body      */
+  --c-ink-faint:#64748b;   /*  4.8:1 — AA, small print only       */
+  --c-line:     #e2e8f0;
+  --c-line-soft:#eef2f6;
   --c-surface:  #ffffff;
-  --c-canvas:   #f2f5f9;
+  --c-raised:   #f1f5f9;
+  --c-canvas:   #f8fafc;
 
-  /* Priority colours */
-  --p-critical: #c62828;
-  --p-high:     #c26a00;
-  --p-medium:   #1565c0;
-  --p-low:      #78909c;
+  /* Priority colours — always paired with the priority word, never alone */
+  --p-critical: #b91c1c;
+  --p-high:     #b45309;
+  --p-medium:   #0369a1;
+  --p-low:      #64748b;
 
   /* Semantic */
-  --c-danger:   #c62828;
-  --c-danger-bg:#fdecec;
-  --c-warn:     #a35a00;
-  --c-warn-bg:  #fdf3e3;
-  --c-ok:       #1b7a4b;
-  --c-ok-bg:    #e6f6ed;
+  --c-danger:   #dc2626;
+  --c-danger-bg:#fef2f2;
+  --c-danger-ln:#fecaca;
+  --c-warn:     #b45309;
+  --c-warn-bg:  #fffbeb;
+  --c-warn-ln:  #fde68a;
+  --c-ok:       #15803d;
+  --c-ok-bg:    #f0fdf4;
+  --c-ok-ln:    #bbf7d0;
 
-  /* Spacing scale */
+  /* Spacing scale — dense/dashboard tier */
   --s-1: 4px;
   --s-2: 8px;
   --s-3: 12px;
@@ -60,13 +107,25 @@
   --s-5: 24px;
   --s-6: 32px;
 
-  --radius:   8px;
-  --radius-s: 5px;
-  --shadow-1: 0 1px 2px rgba(8, 33, 63, .10), 0 1px 3px rgba(8, 33, 63, .06);
-  --shadow-2: 0 8px 28px rgba(8, 33, 63, .18);
+  /* Swiss/minimal: tight radii, shadows that read as edges not clouds */
+  --radius:   6px;
+  --radius-s: 4px;
+  --shadow-1: 0 1px 2px rgba(15, 23, 42, .06), 0 1px 1px rgba(15, 23, 42, .04);
+  --shadow-2: 0 10px 15px -3px rgba(15, 23, 42, .12), 0 4px 6px -4px rgba(15, 23, 42, .10);
 
+  --speed: 180ms;
+  --ease:  cubic-bezier(.4, 0, .2, 1);
+
+  /* System stack — no web fonts, so nothing is fetched at runtime */
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
           Arial, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
+}
+
+/* Honour the OS "reduce motion" setting — WCAG 2.3.3 */
+@media (prefers-reduced-motion: reduce) {
+  :root { --speed: 1ms; }
+  * { animation-duration: 1ms; transition-duration: 1ms; scroll-behavior: auto; }
 }
 
 /* ============================================================
@@ -78,20 +137,33 @@ body {
   margin: 0;
   font-family: var(--font);
   font-size: 14px;
-  line-height: 1.45;
+  line-height: 1.5;
   color: var(--c-ink);
   background: var(--c-canvas);
+  -webkit-font-smoothing: antialiased;
 }
 
-h1, h2, h3 { margin: 0; font-weight: 600; }
+h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -.01em; }
 
 button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
 
-/* Visible focus ring everywhere */
+/* Visible focus ring everywhere — never removed, only restyled */
 :focus-visible {
-  outline: 3px solid var(--c-blue-500);
+  outline: 2px solid var(--c-blue-500);
   outline-offset: 2px;
   border-radius: var(--radius-s);
+}
+/* On navy, the sky ring would not clear 3:1 — invert it there */
+.app-header :focus-visible { outline-color: #fff; }
+
+/* Section eyebrow — small caps label above a block of content */
+.eyebrow {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  color: var(--c-ink-faint);
 }
 
 .visually-hidden {
@@ -107,10 +179,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* ============================================================
    3. HEADER + SUMMARY STRIP
    ============================================================ */
+/* Flat navy, no gradient — Swiss/minimal reads as more authoritative than
+   a decorative fade, and it keeps contrast uniform across the band. */
 .app-header {
-  background: linear-gradient(180deg, var(--c-navy-800), var(--c-navy-900));
+  background: var(--c-navy-900);
   color: #fff;
-  padding: var(--s-4) var(--s-5);
+  padding: var(--s-4) var(--s-5) var(--s-5);
+  border-bottom: 3px solid var(--c-blue-600);
 }
 
 .header-top {
@@ -131,67 +206,139 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .wordmark-badge {
   display: grid;
   place-items: center;
-  width: 38px; height: 38px;
+  width: 40px; height: 40px;
   border-radius: var(--radius-s);
   background: var(--c-blue-600);
   font-weight: 700;
   letter-spacing: .5px;
-  font-size: 13px;
+  font-size: 12.5px;
 }
 
-.wordmark-text { line-height: 1.15; }
-.wordmark-text strong { font-size: 17px; letter-spacing: .3px; }
-.wordmark-text span { display: block; font-size: 11.5px; color: #b9cbe2; }
+.wordmark-text { line-height: 1.2; }
+.wordmark-text strong { font-size: 17px; letter-spacing: -.01em; }
+.wordmark-text span { display: block; font-size: 11.5px; color: #94a3b8; margin-top: 1px; }
 
+/* Minimum 24x24 CSS px pointer target — WCAG 2.2 AA (2.5.8) */
 .btn {
   border: 1px solid transparent;
   border-radius: var(--radius-s);
   padding: var(--s-2) var(--s-4);
-  background: var(--c-line-soft);
+  min-height: 34px;
+  background: var(--c-raised);
   color: var(--c-ink);
   font-weight: 600;
-  cursor: pointer;
+  font-size: 13px;
+  transition: background var(--speed) var(--ease), border-color var(--speed) var(--ease);
 }
-.btn:hover { background: #dde3ea; }
+.btn:hover { background: #e2e8f0; }
 
 .btn-primary { background: var(--c-blue-600); color: #fff; }
-.btn-primary:hover { background: var(--c-blue-500); }
-.btn-primary:disabled { background: #6f8aa8; cursor: not-allowed; }
+.btn-primary:hover { background: var(--c-blue-700); }
+.btn-primary:disabled { background: var(--c-ink-faint); cursor: not-allowed; }
 
 .btn-ghost {
-  background: transparent;
-  border-color: #46618a;
-  color: #fff;
+  background: #fff;
+  border-color: #fff;
+  color: var(--c-navy-900);
 }
-.btn-ghost:hover { background: #16375d; }
+.btn-ghost:hover { background: var(--c-blue-050); border-color: var(--c-blue-050); }
 
-/* Summary strip */
-.summary {
+/* ── Executive KPI band ───────────────────────────────────────────────────
+   Senior-management read: the number is the hero, the label is secondary,
+   and the delivery-health bar gives the portfolio position at a glance
+   without anyone having to count cards. */
+.exec-band { margin-top: var(--s-5); }
+
+.exec-band-head {
   display: flex;
-  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
+  margin-bottom: var(--s-2);
+}
+.exec-band-head .eyebrow { color: #94a3b8; }
+.exec-band-head .as-of { font-size: 11px; color: #94a3b8; }
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: var(--s-2);
-  margin-top: var(--s-4);
   padding: 0;
   list-style: none;
 }
 
 .summary li {
-  background: rgba(255, 255, 255, .08);
-  border: 1px solid rgba(255, 255, 255, .14);
+  background: var(--c-navy-800);
+  border: 1px solid #334155;
+  border-top: 3px solid #475569;
   border-radius: var(--radius-s);
-  padding: var(--s-2) var(--s-3);
-  min-width: 96px;
+  padding: var(--s-3);
+  min-width: 0;
 }
 
 .summary .stat-label {
   display: block;
-  font-size: 11px;
+  font-size: 10.5px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: .6px;
-  color: #b9cbe2;
+  letter-spacing: .07em;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.summary .stat-value { font-size: 19px; font-weight: 700; }
-.summary li.is-overdue { background: rgba(198, 40, 40, .28); border-color: #e07a7a; }
+.summary .stat-value {
+  display: block;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -.02em;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Accent rail identifies each tile without relying on colour alone —
+   the label text always states which measure it is. */
+.summary li.k-total    { border-top-color: var(--c-blue-500); }
+.summary li.k-backlog  { border-top-color: #64748b; }
+.summary li.k-progress { border-top-color: var(--c-blue-500); }
+.summary li.k-blocked  { border-top-color: #f87171; }
+.summary li.k-done     { border-top-color: #4ade80; }
+.summary li.is-overdue {
+  background: #431a1a;
+  border-color: #7f1d1d;
+  border-top-color: #f87171;
+}
+.summary li.is-overdue .stat-label { color: #fca5a5; }
+
+/* Delivery-health meter: proportion of work not overdue */
+.health {
+  margin-top: var(--s-3);
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+/* Both need an explicit block box — a bare inline span ignores height,
+   which silently renders the meter as an empty rail. */
+.health-track {
+  display: block;
+  flex: 0 1 320px;
+  height: 6px;
+  border-radius: 999px;
+  background: #334155;
+  overflow: hidden;
+}
+.health-fill {
+  display: block;
+  height: 100%;
+  background: #4ade80;
+  transition: width var(--speed) var(--ease);
+}
+.health-fill.is-strained { background: #fbbf24; }
+.health-fill.is-critical { background: #f87171; }
+.health-text { font-size: 12px; color: #cbd5e1; }
+.health-text b { color: #fff; font-variant-numeric: tabular-nums; }
 
 /* ============================================================
    4. FILTER BAR
@@ -217,9 +364,15 @@ button, input, select, textarea { font: inherit; color: inherit; }
   border: 1px solid var(--c-line);
   border-radius: var(--radius-s);
   padding: var(--s-2);
+  min-height: 34px;
   background: #fff;
   min-width: 180px;
+  transition: border-color var(--speed) var(--ease), box-shadow var(--speed) var(--ease);
 }
+.filter-field input:hover,
+.filter-field select:hover { border-color: #cbd5e1; }
+.filter-field input:focus,
+.filter-field select:focus { border-color: var(--c-blue-600); }
 
 .ephemeral-note {
   margin: var(--s-3) 0 0;
@@ -228,8 +381,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
   display: flex;
   align-items: center;
   gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  background: var(--c-blue-050);
+  border: 1px solid var(--c-blue-100);
+  border-radius: var(--radius-s);
 }
-.ephemeral-note svg { flex: none; }
+.ephemeral-note svg { flex: none; color: var(--c-blue-600); }
 
 /* ============================================================
    5. BOARD + COLUMNS
@@ -242,20 +399,30 @@ button, input, select, textarea { font: inherit; color: inherit; }
   align-items: start;
 }
 
+/* Columns read as sheets of work, not tinted wells: white surface, a status
+   rail along the top, and a quiet header. */
 .column {
-  background: #e9eef4;
+  background: var(--c-surface);
   border: 1px solid var(--c-line);
   border-radius: var(--radius);
+  border-top: 3px solid var(--c-line);
   display: flex;
   flex-direction: column;
   min-height: 220px;
+  box-shadow: var(--shadow-1);
+  transition: border-color var(--speed) var(--ease), box-shadow var(--speed) var(--ease);
 }
+
+.col-backlog  { border-top-color: #94a3b8; }
+.col-progress { border-top-color: var(--c-blue-600); }
+.col-blocked  { border-top-color: var(--p-critical); }
+.col-done     { border-top-color: var(--c-ok); }
 
 .column.is-drop-target {
   border-color: var(--c-blue-600);
-  background: var(--c-blue-050);
-  box-shadow: inset 0 0 0 2px var(--c-blue-600);
+  box-shadow: 0 0 0 2px var(--c-blue-100), var(--shadow-1);
 }
+.column.is-drop-target .column-body { background: var(--c-blue-050); }
 
 .column-header {
   display: flex;
@@ -263,48 +430,58 @@ button, input, select, textarea { font: inherit; color: inherit; }
   justify-content: space-between;
   gap: var(--s-2);
   padding: var(--s-3);
-  border-bottom: 1px solid var(--c-line);
+  border-bottom: 1px solid var(--c-line-soft);
 }
 
-.column-header h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .7px; }
+.column-header h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--c-navy-700);
+}
 
 .column-header .accent {
-  width: 8px; height: 8px;
+  width: 7px; height: 7px;
   border-radius: 50%;
   display: inline-block;
   margin-right: var(--s-2);
   vertical-align: 1px;
 }
-.col-backlog  .accent { background: var(--c-ink-soft); }
+.col-backlog  .accent { background: #94a3b8; }
 .col-progress .accent { background: var(--c-blue-600); }
 .col-blocked  .accent { background: var(--p-critical); }
 .col-done     .accent { background: var(--c-ok); }
 
 .count-badge {
-  background: var(--c-navy-800);
-  color: #fff;
+  background: var(--c-raised);
+  color: var(--c-navy-700);
+  border: 1px solid var(--c-line);
   border-radius: 999px;
   padding: 1px 9px;
   font-size: 12px;
   font-weight: 700;
-  min-width: 24px;
+  min-width: 26px;
   text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .column-body {
   padding: var(--s-3);
   display: flex;
   flex-direction: column;
-  gap: var(--s-3);
+  gap: var(--s-2);
   flex: 1;
+  background: var(--c-canvas);
+  border-radius: 0 0 var(--radius) var(--radius);
+  transition: background var(--speed) var(--ease);
 }
 
 .empty-hint {
-  color: var(--c-ink-soft);
+  color: var(--c-ink-faint);
   font-size: 12.5px;
   text-align: center;
-  padding: var(--s-4) var(--s-2);
-  border: 1px dashed var(--c-line);
+  padding: var(--s-5) var(--s-2);
+  border: 1px dashed #cbd5e1;
   border-radius: var(--radius-s);
 }
 
@@ -314,14 +491,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .card {
   background: var(--c-surface);
   border: 1px solid var(--c-line);
-  border-left: 5px solid var(--p-medium);
+  border-left: 3px solid var(--p-medium);
   border-radius: var(--radius-s);
   box-shadow: var(--shadow-1);
   padding: var(--s-3);
   cursor: grab;
+  transition: box-shadow var(--speed) var(--ease),
+              border-color var(--speed) var(--ease),
+              transform var(--speed) var(--ease);
+}
+.card:hover {
+  box-shadow: var(--shadow-2);
+  border-color: #cbd5e1;
 }
 .card:active { cursor: grabbing; }
-.card.dragging { opacity: .45; }
+.card.dragging { opacity: .4; transform: scale(.99); }
 
 .card.pri-Critical { border-left-color: var(--p-critical); }
 .card.pri-High     { border-left-color: var(--p-high); }
@@ -336,71 +520,86 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 
 .card-id {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .4px;
-  color: var(--c-ink-soft);
-  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--c-ink-faint);
+  font-family: var(--font-mono);
 }
 
 .card-title {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
+  line-height: 1.35;
   margin: var(--s-1) 0 var(--s-2);
   overflow-wrap: anywhere;
+  text-wrap: balance;              /* avoids a one-word orphan line */
 }
 
 .card-desc {
-  font-size: 12.5px;
+  font-size: 12px;
+  line-height: 1.5;
   color: var(--c-ink-soft);
   margin: 0 0 var(--s-2);
   overflow-wrap: anywhere;
 }
 
+/* Label/value grid — scans far faster than stacked sentences */
 .card-meta {
-  font-size: 12px;
-  color: var(--c-ink-soft);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  font-size: 11.5px;
+  color: var(--c-ink-faint);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px var(--s-2);
   margin-bottom: var(--s-2);
+  padding-top: var(--s-2);
+  border-top: 1px solid var(--c-line-soft);
 }
-.card-meta b { color: var(--c-ink); font-weight: 600; }
+.card-meta dt { font-weight: 500; }
+.card-meta dd { margin: 0; color: var(--c-ink); font-weight: 600; overflow-wrap: anywhere; }
+.card-meta dd.is-overdue-date { color: var(--p-critical); }
 
 .pill-row { display: flex; flex-wrap: wrap; gap: var(--s-1); margin-bottom: var(--s-2); }
 
 .pill {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: .3px;
-  border-radius: 999px;
-  padding: 2px 9px;
-  border: 1px solid;
-}
-
-/* Priority pills carry the label text too — colour is never the only signal */
-.pill-pri-Critical { color: var(--p-critical); border-color: #eeb6b6; background: var(--c-danger-bg); }
-.pill-pri-High     { color: var(--p-high);     border-color: #ecc99a; background: var(--c-warn-bg); }
-.pill-pri-Medium   { color: var(--p-medium);   border-color: #b6d2ee; background: var(--c-blue-050); }
-.pill-pri-Low      { color: var(--p-low);      border-color: #cfd8dd; background: #f1f4f6; }
-
-.tag {
-  font-size: 11px;
+  letter-spacing: .02em;
   border-radius: var(--radius-s);
   padding: 2px 8px;
-  background: #eef1f5;
-  border: 1px solid var(--c-line);
-  color: var(--c-ink-soft);
+  border: 1px solid;
+  white-space: nowrap;             /* a wrapped chip label reads as two chips */
 }
 
+/* Priority pills spell out the priority — colour is never the only signal */
+.pill-pri-Critical { color: var(--p-critical); border-color: var(--c-danger-ln); background: var(--c-danger-bg); }
+.pill-pri-High     { color: var(--p-high);     border-color: var(--c-warn-ln);   background: var(--c-warn-bg); }
+.pill-pri-Medium   { color: var(--p-medium);   border-color: var(--c-blue-100);  background: var(--c-blue-050); }
+.pill-pri-Low      { color: var(--p-low);      border-color: var(--c-line);      background: var(--c-raised); }
+
+.tag {
+  font-size: 10.5px;
+  border-radius: var(--radius-s);
+  padding: 2px 8px;
+  background: var(--c-raised);
+  border: 1px solid var(--c-line);
+  color: var(--c-ink-soft);
+  white-space: nowrap;
+}
+
+/* Carries the word "Overdue" plus a warning glyph — three signals, not one */
 .badge-overdue {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
-  border-radius: 999px;
-  padding: 2px 9px;
+  border-radius: var(--radius-s);
+  padding: 2px 8px;
   color: var(--c-danger);
   background: var(--c-danger-bg);
-  border: 1px solid #eeb6b6;
+  border: 1px solid var(--c-danger-ln);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .card-actions {
@@ -411,29 +610,46 @@ button, input, select, textarea { font: inherit; color: inherit; }
   border-top: 1px solid var(--c-line-soft);
   padding-top: var(--s-2);
 }
+.card-actions .mini-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.card-status {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--c-ink-faint);
+}
 
+/* 24px minimum height keeps these inside WCAG 2.2 AA target size */
 .mini-btn {
   border: 1px solid var(--c-line);
   background: #fff;
   border-radius: var(--radius-s);
-  padding: 3px 8px;
-  font-size: 12px;
+  padding: 4px 10px;
+  min-height: 26px;
+  font-size: 11.5px;
   font-weight: 600;
-  cursor: pointer;
+  color: var(--c-navy-700);
+  transition: background var(--speed) var(--ease), border-color var(--speed) var(--ease);
 }
-.mini-btn:hover { background: var(--c-line-soft); }
+.mini-btn:hover { background: var(--c-blue-050); border-color: var(--c-blue-100); color: var(--c-blue-700); }
 
 .icon-btn {
   border: 1px solid transparent;
   background: transparent;
   border-radius: var(--radius-s);
+  display: grid;
+  place-items: center;
   width: 26px; height: 26px;
   line-height: 1;
-  font-size: 16px;
-  color: var(--c-ink-soft);
-  cursor: pointer;
+  color: var(--c-ink-faint);
+  transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
 }
 .icon-btn:hover { background: var(--c-danger-bg); color: var(--c-danger); }
+.icon-btn svg { display: block; }
 
 /* Inline move menu (keyboard fallback for drag and drop) */
 .move-menu {
@@ -579,12 +795,28 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* ============================================================
    10. RESPONSIVE — stack columns below 768px
    ============================================================ */
+/* 1440 / 1024 / 768 / 375 — the four widths in the pre-delivery checklist */
+@media (max-width: 1180px) {
+  .summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 @media (max-width: 768px) {
-  .board { grid-template-columns: 1fr; }
+  .app-header { padding: var(--s-3) var(--s-4) var(--s-4); }
+  .board { grid-template-columns: 1fr; padding: var(--s-4); }
   .form-grid { grid-template-columns: 1fr; }
+  .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .summary .stat-value { font-size: 22px; }
   .filter-field input,
   .filter-field select { min-width: 0; width: 100%; }
   .filter-field { flex: 1 1 100%; }
+  .toolbar { padding: var(--s-3) var(--s-4); }
+}
+
+@media (max-width: 420px) {
+  .summary { grid-template-columns: 1fr 1fr; }
+  .header-top { align-items: flex-start; }
+  .exec-band-head { flex-direction: column; gap: 2px; }
 }
 </style>
 </head>
@@ -606,7 +838,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
     <button type="button" class="btn btn-ghost" id="openAddTask">+ Add Task</button>
   </div>
 
-  <ul class="summary" id="summaryStrip" aria-label="Board summary"></ul>
+  <div class="exec-band">
+    <div class="exec-band-head">
+      <span class="eyebrow">Portfolio overview</span>
+      <span class="as-of" id="asOfDate"></span>
+    </div>
+    <ul class="summary" id="summaryStrip" aria-label="Board summary"></ul>
+    <div class="health" id="healthMeter"></div>
+  </div>
 </header>
 
 <!-- ============================================================
@@ -786,6 +1025,19 @@ const CATEGORIES = [
 const PRIORITIES = ["Critical", "High", "Medium", "Low"];
 
 /* ============================================================
+   SECURITY LIMITS
+   ------------------------------------------------------------
+   Availability controls. The board holds everything in memory and
+   the notification endpoint has no captcha, so the only place a
+   ceiling can be enforced is here.
+   ============================================================ */
+const MAX_TASKS = 200;                 // board size ceiling
+const MIN_SUBMIT_INTERVAL_MS = 1500;   // floor between two submissions
+const NOTIFY_TIMEOUT_MS = 10000;       // abort a hanging notification
+
+let lastSubmitAt = 0;
+
+/* ============================================================
    STATE — single source of truth
    ============================================================ */
 const state = {
@@ -800,6 +1052,19 @@ const state = {
    UTILITIES
    ============================================================ */
 
+/* Disallowed code points, stated once so the two sanitisers cannot drift
+   apart. Tab (U+0009), newline (U+000A) and carriage return (U+000D) are
+   deliberately NOT in this set: they are legitimate whitespace, and deleting
+   them outright runs words together -- "line one\nline two" would collapse to
+   "line oneline two". The callers normalise them as whitespace instead.
+
+   U+0000-0008, U+000B-000C, U+000E-001F, U+007F-009F   control characters
+   U+200B-200F   zero-width space + joiners, LRM / RLM
+   U+202A-202E   bidi embedding and override
+   U+2066-2069   bidi isolates                                              */
+const CONTROL_CHARS =
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g;
+
 /** Escape a string for safe interpolation into HTML. */
 function escapeHtml(value) {
   return String(value == null ? "" : value)
@@ -808,6 +1073,36 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+/**
+ * Normalise free-text input before it is ever stored in state.
+ *
+ * escapeHtml() stops markup executing, but it does not stop a *display*
+ * attack: control characters, bidirectional overrides and zero-width joiners
+ * all survive escaping and can still make a card render as something other
+ * than what was typed -- an assignee name that visually reads as a different
+ * person, for example. Strip them at the trust boundary so state only ever
+ * holds printable text. The excluded ranges are listed on CONTROL_CHARS above.
+ *
+ * Real whitespace survives the strip and is then collapsed to single spaces,
+ * so a pasted multi-line title becomes one tidy line rather than one long word.
+ */
+function sanitiseText(value) {
+  return String(value == null ? "" : value)
+    .replace(CONTROL_CHARS, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Same, but keeps newlines so the description can hold paragraphs. */
+function sanitiseMultiline(value) {
+  return String(value == null ? "" : value)
+    .replace(/\r\n?/g, "\n")
+    .replace(CONTROL_CHARS, "")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 /** Today as a local YYYY-MM-DD string (string compare avoids timezone drift). */
@@ -930,8 +1225,13 @@ function renderCard(task) {
   const id = escapeHtml(task.id);
   const overdue = isOverdue(task);
 
+  // Three independent signals, so colour is never doing the work alone:
+  // the warning glyph, the word "Overdue", and the red treatment.
   const overdueBadge = overdue
-    ? '<span class="badge-overdue">Overdue</span>'
+    ? '<span class="badge-overdue">' +
+        '<svg width="10" height="10" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">' +
+          '<path d="M8 1.5 15 14H1L8 1.5zM7.2 6v4h1.6V6H7.2zm0 5v1.5h1.6V11H7.2z"/>' +
+        "</svg>Overdue</span>"
     : "";
 
   const description = task.description
@@ -980,7 +1280,11 @@ function renderCard(task) {
       '<div class="card-top">' +
         '<span class="card-id">' + id + "</span>" +
         '<button type="button" class="icon-btn" data-action="delete-ask" data-id="' + id + '" ' +
-          'aria-label="Delete task ' + id + '">&times;</button>' +
+          'aria-label="Delete task ' + id + '">' +
+          '<svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true" fill="none" ' +
+            'stroke="currentColor" stroke-width="2" stroke-linecap="round">' +
+            '<path d="M4 4l8 8M12 4l-8 8"/>' +
+          "</svg></button>" +
       "</div>" +
 
       '<h3 class="card-title">' + escapeHtml(task.title) + "</h3>" +
@@ -993,16 +1297,23 @@ function renderCard(task) {
         overdueBadge +
       "</div>" +
 
-      '<div class="card-meta">' +
-        "<span>Project: <b>" + escapeHtml(task.project) + "</b></span>" +
-        "<span>Assignee: <b>" + escapeHtml(task.assignee) + "</b></span>" +
-        "<span>Due: <b>" + escapeHtml(formatDate(task.dueDate)) + "</b></span>" +
-      "</div>" +
+      // A definition list is the honest markup for label/value pairs, and it
+      // gives screen readers the pairing that a row of spans does not.
+      '<dl class="card-meta">' +
+        "<dt>Project</dt><dd>" + escapeHtml(task.project) + "</dd>" +
+        "<dt>Assignee</dt><dd>" + escapeHtml(task.assignee) + "</dd>" +
+        "<dt>Due</dt><dd" + (overdue ? ' class="is-overdue-date"' : "") + ">" +
+          escapeHtml(formatDate(task.dueDate)) + "</dd>" +
+      "</dl>" +
 
       '<div class="card-actions">' +
         '<button type="button" class="mini-btn" data-action="open-move" data-id="' + id + '" ' +
-          'aria-expanded="' + (state.ui.moveMenuFor === task.id) + '">Move &#9656;</button>' +
-        '<span class="card-id">' + escapeHtml(task.status) + "</span>" +
+          'aria-expanded="' + (state.ui.moveMenuFor === task.id) + '">Move' +
+          '<svg width="9" height="9" viewBox="0 0 16 16" aria-hidden="true" fill="none" ' +
+            'stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
+            '<path d="M6 3l5 5-5 5"/>' +
+          "</svg></button>" +
+        '<span class="card-status">' + escapeHtml(task.status) + "</span>" +
       "</div>" +
 
       moveMenu +
@@ -1043,29 +1354,67 @@ function renderBoard() {
   restoreFocus();
 }
 
-/** Live header counters — always computed over the full task list. */
+/**
+ * Live header counters — always computed over the full task list, never the
+ * filtered view, so the executive band always states the whole portfolio.
+ */
 function renderSummary() {
   const all = state.tasks;
   const overdueCount = all.filter(isOverdue).length;
 
-  const cells = [{ label: "Total tasks", value: all.length, danger: false }];
+  const cells = [{ label: "Total tasks", value: all.length, cls: "k-total" }];
+
+  const KEY = { "Backlog": "k-backlog", "In Progress": "k-progress",
+                "Blocked": "k-blocked", "Done": "k-done" };
 
   STATUSES.forEach(function (status) {
     cells.push({
       label: status,
       value: all.filter(function (t) { return t.status === status; }).length,
-      danger: false
+      cls: KEY[status]
     });
   });
 
-  cells.push({ label: "Overdue", value: overdueCount, danger: overdueCount > 0 });
+  cells.push({ label: "Overdue", value: overdueCount, cls: "", danger: overdueCount > 0 });
 
   document.getElementById("summaryStrip").innerHTML = cells.map(function (c) {
-    return '<li' + (c.danger ? ' class="is-overdue"' : "") + ">" +
+    const cls = (c.cls || "") + (c.danger ? " is-overdue" : "");
+    return '<li class="' + cls.trim() + '">' +
              '<span class="stat-label">' + escapeHtml(c.label) + "</span>" +
              '<span class="stat-value">' + c.value + "</span>" +
            "</li>";
   }).join("");
+
+  renderHealth(all.length, overdueCount);
+  document.getElementById("asOfDate").textContent = "As at " + formatDate(todayISO());
+}
+
+/**
+ * Delivery-health meter: the share of the portfolio that is not overdue.
+ * Senior readers want the position, not the arithmetic — but the percentage
+ * is stated in text as well, so the bar is never the only carrier of it.
+ */
+function renderHealth(total, overdueCount) {
+  const el = document.getElementById("healthMeter");
+
+  if (!total) {
+    el.innerHTML = '<span class="health-text">No tasks on the board.</span>';
+    return;
+  }
+
+  const onTrack = total - overdueCount;
+  const pct = Math.round((onTrack / total) * 100);
+  const tone = pct >= 90 ? "" : (pct >= 75 ? " is-strained" : " is-critical");
+  const word = pct >= 90 ? "On track" : (pct >= 75 ? "Watch" : "At risk");
+
+  el.innerHTML =
+    '<span class="health-track" role="img" ' +
+      'aria-label="Delivery health: ' + pct + ' percent of tasks are on schedule">' +
+      '<span class="health-fill' + tone + '" style="width:' + pct + '%"></span>' +
+    "</span>" +
+    '<span class="health-text">' + escapeHtml(word) + " &middot; <b>" + pct +
+      "%</b> on schedule &middot; <b>" + onTrack + "</b> of <b>" + total +
+      "</b> tasks</span>";
 }
 
 /** Re-focus the element the user was on before a re-render, if any. */
@@ -1080,15 +1429,35 @@ function restoreFocus() {
    TASK OPERATIONS
    ============================================================ */
 
-/** Add a task to state and re-render. Returns the created task. */
+/**
+ * Add a task to state and re-render. Returns the created task, or null if the
+ * values fail the second check.
+ *
+ * validateForm() has already checked these, but this function is the only door
+ * into state — re-checking here means a future caller cannot bypass the rules
+ * by skipping the form. Free text is re-sanitised and enumerations re-checked
+ * against their allowlists; length caps are re-applied rather than trusted.
+ */
 function addTask(values) {
+  if (state.tasks.length >= MAX_TASKS) return null;
+
+  const title = sanitiseText(values.title).slice(0, 80);
+  const assignee = sanitiseText(values.assignee).slice(0, 60);
+  if (!title || !assignee) return null;
+
+  if (PROJECTS.indexOf(values.project) === -1) return null;
+  if (CATEGORIES.indexOf(values.category) === -1) return null;
+  if (PRIORITIES.indexOf(values.priority) === -1) return null;
+  if (STATUSES.indexOf(values.status) === -1) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(values.dueDate)) return null;
+
   const task = {
     id: nextTaskId(),
-    title: values.title,
-    description: values.description,
+    title: title,
+    description: sanitiseMultiline(values.description).slice(0, 500),
     project: values.project,
     category: values.category,
-    assignee: values.assignee,
+    assignee: assignee,
     priority: values.priority,
     dueDate: values.dueDate,
     status: values.status
@@ -1146,8 +1515,18 @@ function showToast(message, kind) {
    FORMSUBMIT INTEGRATION (AJAX JSON — the page never navigates)
    ============================================================ */
 async function notifyNewTask(task) {
+  // Without a timeout a stalled request holds the button disabled forever.
+  const controller = new AbortController();
+  const timer = window.setTimeout(function () { controller.abort(); }, NOTIFY_TIMEOUT_MS);
+
+  try {
   const res = await fetch(FORMSUBMIT_ENDPOINT, {
     method: "POST",
+    signal: controller.signal,
+    mode: "cors",
+    cache: "no-store",
+    credentials: "omit",        // never attach cookies to a third-party post
+    referrerPolicy: "no-referrer",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({
       _subject: `[UOB IT PMO] New task ${task.id}: ${task.title}`,
@@ -1167,6 +1546,9 @@ async function notifyNewTask(task) {
   });
   if (!res.ok) throw new Error(`FormSubmit failed: ${res.status}`);
   return res.json();
+  } finally {
+    window.clearTimeout(timer);
+  }
 }
 
 /* ============================================================
@@ -1229,12 +1611,14 @@ function clearAllErrors() {
 function validateForm() {
   clearAllErrors();
 
+  // Free text is sanitised at the boundary; select values are checked against
+  // their allowlists below, so a tampered <option> cannot smuggle a value in.
   const values = {
-    title: document.getElementById("fTitle").value.trim(),
-    description: document.getElementById("fDescription").value.trim(),
+    title: sanitiseText(document.getElementById("fTitle").value),
+    description: sanitiseMultiline(document.getElementById("fDescription").value),
     project: document.getElementById("fProject").value,
     category: document.getElementById("fCategory").value,
-    assignee: document.getElementById("fAssignee").value.trim(),
+    assignee: sanitiseText(document.getElementById("fAssignee").value),
     priority: document.getElementById("fPriority").value,
     dueDate: document.getElementById("fDueDate").value,
     status: document.getElementById("fStatus").value
@@ -1259,10 +1643,24 @@ function validateForm() {
   if (!values.assignee) fail("assignee", "An assignee is required.");
   if (PRIORITIES.indexOf(values.priority) === -1) fail("priority", "Choose a priority.");
 
+  // Shape check before the range check — "2026-13-45" must not reach a compare
   if (!values.dueDate) fail("dueDate", "A due date is required.");
+  else if (!/^\d{4}-\d{2}-\d{2}$/.test(values.dueDate)) fail("dueDate", "Enter the date as YYYY-MM-DD.");
   else if (values.dueDate < todayISO()) fail("dueDate", "The due date cannot be in the past.");
 
   if (STATUSES.indexOf(values.status) === -1) fail("status", "Choose a status.");
+
+  // Availability guard: an unbounded board degrades rendering and memory.
+  if (ok && state.tasks.length >= MAX_TASKS) {
+    fail("title", "Board limit of " + MAX_TASKS + " tasks reached. Delete a task first.");
+  }
+
+  // Rate limit: the notification endpoint runs with _captcha disabled, so the
+  // client is the only thing standing between a stuck key and abuse of it.
+  const sinceLast = Date.now() - lastSubmitAt;
+  if (ok && sinceLast < MIN_SUBMIT_INTERVAL_MS) {
+    fail("title", "Please wait a moment before adding another task.");
+  }
 
   if (firstInvalid) {
     const el = document.querySelector('[data-field="' + firstInvalid + '"] input, ' +
@@ -1285,12 +1683,22 @@ async function handleSubmit(event) {
   const result = validateForm();
   if (!result.ok) return;
 
+  lastSubmitAt = Date.now();
+
   const submitBtn = document.getElementById("submitTask");
   submitBtn.disabled = true;
   submitBtn.textContent = "Sending…";
 
   // Optimistic: the board updates before the network call resolves.
   const task = addTask(result.values);
+  if (!task) {
+    // addTask rejected the values on its own check — nothing was added, so
+    // there is nothing to notify about.
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Add task";
+    showToast("That task could not be added. Check the fields and try again.", "warn");
+    return;
+  }
   showToast("Task " + task.id + " added to " + task.status + ".", "success");
 
   document.getElementById("addTaskForm").reset();
@@ -1467,6 +1875,26 @@ function setupModal() {
 /* ============================================================
    INIT
    ============================================================ */
+/**
+ * Clickjacking stand-in.
+ *
+ * frame-ancestors only works as a real response header, and a static host may
+ * not send one. If the page finds itself framed by another origin, say so
+ * rather than letting it be overlaid invisibly and clicked through. Reading
+ * top.location across origins throws, and that throw is itself the signal.
+ */
+function warnIfFramed() {
+  let framed = false;
+  try {
+    framed = window.self !== window.top && window.top.location.origin !== window.location.origin;
+  } catch (err) {
+    framed = true;                 // cross-origin parent — access denied
+  }
+  if (framed) {
+    showToast("This page is being displayed inside another site. Open it directly.", "warn");
+  }
+}
+
 function init() {
   populateSelects();
   seedTasks();
@@ -1475,6 +1903,7 @@ function init() {
   setupBoardActions();
   setupFilters();
   setupModal();
+  warnIfFramed();
 }
 
 init();

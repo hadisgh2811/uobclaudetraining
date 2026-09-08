@@ -3,3 +3,12 @@
 
 # Personal working notes
 Notes-*.txt
+
+# Course assignment submissions — personal, carry the author's name
+*.docx
+
+# Third-party skills installed via `npx skills add`. ~3.8 MB of other
+# people's material; skills-lock.json records what to reinstall, so the
+# content itself does not belong in this repo.
+.claude/skills/
+skills-lock.json

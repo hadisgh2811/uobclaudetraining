@@ -5,7 +5,7 @@ Claude Code.
 
 **[▶ Open the live demo](https://hadisgh2811.github.io/uobclaudetraining/)**
 
-[![The board in Demo mode: a summary strip reading Total 8 and Overdue 2, filter controls, and four columns — Backlog, In Progress, Blocked, Done — holding priority-tagged task cards](docs/screenshot.png)](https://hadisgh2811.github.io/uobclaudetraining/)
+[![The board: a navy executive header with six KPI tiles reading Total 8, Backlog 2, In Progress 3, Blocked 2, Done 1 and Overdue 2, a delivery-health meter showing 75% on schedule, filter controls, and four columns of priority-tagged task cards](docs/screenshot.png)](https://hadisgh2811.github.io/uobclaudetraining/)
 
 > Internal demo / training artefact. It is not an official UOB system and uses no real UOB
 > logo, trademark or branding — only a neutral "UOB IT PMO" text wordmark.
@@ -44,6 +44,26 @@ confirmation email, and nothing is delivered until you click the link in it.
 Until that is done, adding a task shows an amber *"Card added locally — email notification
 failed"* toast. That is expected — the notification is optional and its failure never
 affects the board.
+
+## Security posture
+
+The board takes no login and stores nothing, so the interesting boundaries are
+the two places untrusted data crosses: typed text reaching the DOM, and task
+data leaving for the notification endpoint.
+
+| Control | What it covers |
+| --- | --- |
+| `escapeHtml()` on every interpolated value | Script injection through any task field |
+| Content Security Policy | Second layer if an escape is ever missed — `default-src 'none'`, no external origin, `connect-src` limited to the one endpoint, `form-action 'none'`, `base-uri 'none'` |
+| Input sanitisation | Strips control characters, bidi overrides and zero-width joiners, so a name cannot be made to display as someone else's |
+| Allowlist re-validation in `addTask()` | Project, category, priority and status are re-checked at the only door into state, not merely at the form |
+| `referrer: no-referrer` + `credentials: omit` | The page URL and any cookies stay out of the third-party request |
+| Board cap and submit interval | Bounds memory growth and stops the captcha-less endpoint being hammered |
+| Request timeout | A stalled notification cannot leave the form disabled indefinitely |
+
+`frame-ancestors` is declared but browsers ignore it in a `<meta>` tag — real
+clickjacking cover needs a response header, so the page also checks at runtime
+whether it has been framed by another origin and warns if so.
 
 ## Repository contents
 
