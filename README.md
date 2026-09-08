@@ -3,12 +3,15 @@
 A single-page IT project management Kanban board, built as a training exercise with
 Claude Code.
 
+**[▶ Open the live demo](https://hadisgh2811.github.io/uobclaudetraining/)**
+
 > Internal demo / training artefact. It is not an official UOB system and uses no real UOB
 > logo, trademark or branding — only a neutral "UOB IT PMO" text wordmark.
 
 ## Running it
 
-Download [`index.html`](index.html) and double-click it. That's the whole app — markup,
+Either [open it in the browser](https://hadisgh2811.github.io/uobclaudetraining/), or
+download [`index.html`](index.html) and double-click it. That's the whole app — markup,
 styles and script in one file, with no build step, no dependencies and no server.
 
 ## What it does
@@ -45,4 +48,7 @@ affects the board.
 | File | |
 | --- | --- |
 | `index.html` | The entire application |
+| `404.html` | Fallback page for unknown paths on the published site |
 | `CLAUDE.md` | Architecture and constraints, for working on this with Claude Code |
+| `.github/workflows/deploy-pages.yml` | Publishes the site to GitHub Pages on every push to `main` |
+| `.claude/commands/` | Project slash commands for Claude Code |
