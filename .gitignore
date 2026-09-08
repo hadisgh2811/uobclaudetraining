@@ -1,0 +1,5 @@
+# Course material — third-party, not redistributable
+*.pdf
+
+# Personal working notes
+Notes-*.txt
