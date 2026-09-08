@@ -184,7 +184,50 @@ Then:
   permissions to allow it), tell the user to set
   **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 
-## Step 4 — README
+## Step 4 — Screenshot of the live site
+
+Capture the published page and commit it as `docs/screenshot.png`, so the README can
+show what the project looks like without the reader having to open it.
+
+Do this only once Step 3 reports the site returning HTTP 200 — screenshotting a page
+that is still deploying yields a 404 image.
+
+**Preferred: the Playwright MCP tools** (`browser_navigate`, `browser_take_screenshot`).
+The server is registered for this project in `.mcp.json`. If those tools are not in
+your tool list, the server is not connected — say so rather than pretending to use it,
+and fall back below. It needs Node.js on PATH, and a Claude Code restart after the
+config is first added.
+
+```
+browser_navigate      → https://OWNER.github.io/REPO/
+browser_take_screenshot → filename: docs/screenshot.png, fullPage: false
+```
+
+Wait for the page to settle before capturing. A viewport shot (`fullPage: false`) reads
+better in a README than a long full-page strip; use `fullPage: true` only if the page
+is short.
+
+**Fallback when Playwright is unavailable** — headless Chrome or Edge, both of which
+ship on Windows and need no install:
+
+```powershell
+& "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless --disable-gpu `
+  --screenshot="$PWD\docs\screenshot.png" --window-size=1440,900 `
+  --virtual-time-budget=4000 "https://OWNER.github.io/REPO/"
+```
+
+`--virtual-time-budget` gives scripts time to render before the capture; without it you
+can get a blank or half-drawn page. Swap in `msedge.exe` if Chrome is absent.
+
+Either way, afterwards:
+
+- Confirm the file exists and is a plausible size (a few hundred KB; a sub-5KB PNG
+  usually means a blank or error page was captured).
+- Open it and check it actually shows the app, not a 404 or an empty frame. Do not
+  commit a screenshot you have not looked at.
+- Re-capture whenever the UI changes, so the README never shows a stale interface.
+
+## Step 5 — README
 
 Read the existing `README.md` first if there is one, and edit rather than replace —
 preserve anything the user wrote by hand.
@@ -193,6 +236,9 @@ It should cover, at a level appropriate to the project:
 
 - Project title and a one-line description of what it is
 - A **live demo link** to the Pages URL from Step 3
+- The **screenshot from Step 4**, near the top, as
+  `[![Screenshot](docs/screenshot.png)](<pages url>)` so the image itself links to the
+  live site. Give it real alt text — never an empty `![]()`
 - What it demonstrates / key features
 - How to run it locally (for this project: open `index.html` — no build, no server)
 - Notable constraints or caveats worth stating up front (for this project: no
@@ -202,7 +248,7 @@ It should cover, at a level appropriate to the project:
 Keep it honest — do not claim features that are not implemented, and do not add
 badges for CI that does not exist.
 
-## Step 5 — Repo About + homepage link
+## Step 6 — Repo About + homepage link
 
 Set the repo description and the homepage URL to the Pages link, and add topics.
 
@@ -229,13 +275,14 @@ With neither, tell the user exactly where to click: the repo page → the ⚙ ge
 
 Confirm afterwards: `gh repo view OWNER/REPO --json description,homepageUrl,repositoryTopics`
 
-## Step 6 — Report
+## Step 7 — Report
 
 Finish with a short summary:
 
 - Secret scan result — what was checked, what was found, what was decided
 - Commit pushed (SHA + message) and the repo URL
 - Workflow run status and the live Pages URL (say if it is still deploying)
+- Screenshot — captured with which tool, or why it was skipped
 - What changed in the README
 - About/homepage/topics — set, or the manual steps left for the user
 
